@@ -41,9 +41,11 @@ cd /etc/ansible
 nano hosts
 
 
-switch to jenkins user.
+switch to jenkins user. - sudo su
+			- su jenkins
 
 generate key pairs
+	- ssh-keygen
 	- copy public key
 
 in docker server-
