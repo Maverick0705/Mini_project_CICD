@@ -1,0 +1,133 @@
+Steps ---
+
+Create a repository.
+Create two ec2 instances
+
+
+In Jenkins - Server :
+
+sudo hostnamectl set-hostname jenkins
+/bin/bash
+
+install jre-
+
+sudo apt update
+sudo apt install openjdk-17-jre
+
+install jenkins-
+
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee   /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]   https://pkg.jenkins.io/debian-stable binary/ | sudo tee   /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update
+sudo apt-get install jenkins -y
+
+open port 8080
+
+install ansible-
+
+ sudo apt update
+ sudo apt install software-properties-common
+ sudo add-apt-repository --yes --update ppa:ansible/ansible
+ sudo apt install ansible -y
+
+Now we have to install some dependencies for docker-ansible -
+
+sudo apt install python3-pip
+pip install docker
+
+Add the docker server ip in hosts in ansible-
+
+cd /etc/ansible
+nano hosts
+
+
+switch to jenkins user.
+
+generate key pairs
+	- copy public key
+
+in docker server-
+        - switch to root user
+	- generate ssh keypair
+	- paste the public key of jenkins server in authorized keys section.
+
+create a directory for playbooks -> create - deployment.yaml file
+
+deployment.yaml file-
+
+- name: Build and Deploy the docker container
+  hosts: dockerserver
+  gather_facts: false
+  remote_user: root
+  tasks:
+
+    - name: Stopping Docker Container
+      docker_container:
+        name: mico-container
+        image: mico:latest
+        state: stopped
+
+    - name: Removing the Container
+      docker_container:
+        name: mico-container
+        image: mico:latest
+        state: absent
+
+    - name: Removing Docker Image
+      docker_image:
+        name: mico:latest
+        state: absent
+
+    - name: Building Docker Image
+      docker_image:
+        name: mico:latest
+        source: build
+        build:
+          path: ~/project/
+        state: present
+
+    - name: Creating the Docker Container
+      docker_container:
+        name: mico-container
+        image: mico:latest
+        ports:
+          - "80:80"
+        state: started
+
+
+In jenkins-
+
+add pollSCM.
+in build steps-
+
+	add shell command-
+
+		scp -r /var/lib/jenkins/workspace/ansible-jenkins-pipeline/* root@52.20.150.169:~/project
+		ansible-playbook /var/lib/jenkins/playbooks/deployment.yaml
+
+
+
+
+In Docker - Server :
+
+install docker -
+
+sudo apt-get update
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo   "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+"$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo docker run hello-world
+
+give permission to docker-
+
+sudo usermod -aG docker $USER (ubuntu)
+newgrp docker
+
+
+
+
